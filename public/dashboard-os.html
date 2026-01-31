@@ -81,6 +81,23 @@
       cursor: pointer;
       font-weight: bold;
     }
+    .month-btn {
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-weight: 500;
+      transition: all 0.2s;
+      border: 2px solid #e5e7eb;
+      background: white;
+    }
+    .month-btn.active {
+      background: #1e40af;
+      color: white;
+      border-color: #1e40af;
+    }
+    .month-btn:hover:not(.active) {
+      background: #f3f4f6;
+      border-color: #1e40af;
+    }
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(10px); }
       to { opacity: 1; transform: translateY(0); }
@@ -101,7 +118,7 @@
         </div>
         <div class="text-right">
           <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-            Jul - Ago - Set 2025
+            Outubro - Novembro - Dezembro 2025
           </span>
         </div>
       </div>
@@ -115,6 +132,18 @@
         </svg>
         Filtros
       </h2>
+      
+      <!-- Month Filter -->
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-2">Período (Mês)</label>
+        <div class="flex gap-2 flex-wrap">
+          <button id="btnOutubro" class="month-btn active" onclick="toggleMonth('Outubro')">Outubro</button>
+          <button id="btnNovembro" class="month-btn active" onclick="toggleMonth('Novembro')">Novembro</button>
+          <button id="btnDezembro" class="month-btn active" onclick="toggleMonth('Dezembro')">Dezembro</button>
+          <button class="month-btn" onclick="selectAllMonths()">Todos</button>
+        </div>
+      </div>
+
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <!-- Técnico Filter (Multi-select) -->
         <div class="multiselect-container">
@@ -193,7 +222,7 @@
           <div>
             <p class="text-sm font-medium text-gray-500 uppercase tracking-wide">Total Manutenção</p>
             <p id="kpiManutencao" class="text-4xl font-bold text-orange-600 mt-2">0</p>
-            <p class="text-sm text-gray-500 mt-1">Diagnóstico, Análise, Troca, Mudança</p>
+            <p class="text-sm text-gray-500 mt-1">Diagnóstico, Análise, Troca, Mudança Interna</p>
           </div>
           <div class="p-4 bg-orange-100 rounded-full">
             <svg class="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -271,7 +300,15 @@
 
     <!-- Charts Section -->
     <section class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-      <!-- Tipo de OS Chart -->
+      <!-- TOP 5 Tipo de OS Chart -->
+      <div class="kpi-card p-6">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">🏆 TOP 5 Tipos de O.S (Maior Volume)</h3>
+        <div class="h-80">
+          <canvas id="top5TipoChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Distribuição Tipo de OS Chart -->
       <div class="kpi-card p-6">
         <h3 class="text-lg font-semibold text-gray-800 mb-4">Distribuição por Tipo de O.S</h3>
         <div class="h-80">
@@ -295,8 +332,8 @@
         </div>
       </div>
 
-      <!-- Motivos de Fechamento Chart -->
-      <div class="kpi-card p-6">
+      <!-- Top 10 Motivos de Fechamento Chart -->
+      <div class="kpi-card p-6 lg:col-span-2">
         <h3 class="text-lg font-semibold text-gray-800 mb-4">Top 10 Motivos de Fechamento</h3>
         <div class="h-80">
           <canvas id="motivoChart"></canvas>
@@ -337,79 +374,119 @@
     <!-- Footer -->
     <footer class="mt-8 text-center text-gray-500 text-sm">
       <p>Dashboard de Ordens de Serviço - Norteline © 2025</p>
-      <p class="mt-1">Dados do período: Julho - Setembro 2025</p>
+      <p class="mt-1">Dados do período: Outubro - Dezembro 2025</p>
     </footer>
   </div>
 
   <script>
-    // Data from Excel (parsed)
+    // Parsed unique OS data from Excel (1473 unique orders)
+    // Data structure: each row is a unique OS with its first occurrence
     const rawData = [
-      {"numero_os": "003325268164829105", "cliente": "MARIA DE LOURDES DE JESUS", "tipo_os": "DIAGNOSTICAR E REPARAR", "tecnico": "JOABE SOARES", "cidade": "Janaúba", "motivo": "MAL FUNCIONAMENTO ONU / ONT", "data_cadastro": "25/09/2025 16:48:29"},
-      {"numero_os": "003325268130911712", "cliente": "CLEIDE RODRIGUES DOS SANTOS", "tipo_os": "DIAGNOSTICAR E REPARAR", "tecnico": "RENATO MARTINS", "cidade": "Janaúba", "motivo": "MAL FUNCIONAMENTO ONU / ONT", "data_cadastro": "25/09/2025 13:09:11"},
-      {"numero_os": "003325252101413904", "cliente": "VANDER LIDIO CARDOSO", "tipo_os": "TROCA DE EQUIPAMENTOS", "tecnico": "JOABE SOARES", "cidade": "Janaúba", "motivo": "UPGRADE DE SERVIÇO", "data_cadastro": "09/09/2025 10:14:13"},
-      {"numero_os": "003325267075806987", "cliente": "ANNY BEATRIZ CUSTODIO SANTOS", "tipo_os": "ANALISAR E OTIMIZAR", "tecnico": "DORISVAN BATISTA", "cidade": "Jaíba", "motivo": "MAL FUNCIONAMENTO ROTEADOR", "data_cadastro": "24/09/2025 07:58:06"},
-      {"numero_os": "003325268114422975", "cliente": "GUILHERME MOREIRA SANTOS", "tipo_os": "INSTALAÇÃO INTERNET", "tecnico": "ROBSON CARDOSO", "cidade": "Jaíba", "motivo": "INSTALAÇÃO INTERNET FIBRA ÓPTICA EXECUTADA", "data_cadastro": "25/09/2025 11:44:22"},
-      {"numero_os": "003325237154249355", "cliente": "ENILSON MAXIMIANO DA SILVA", "tipo_os": "DIAGNOSTICAR E REPARAR", "tecnico": "EVERTON MARCELLO", "cidade": "Janaúba", "motivo": "REALINHAMENTO DE INSTALAÇÃO WIRELESS", "data_cadastro": "25/08/2025 15:42:49"},
-      {"numero_os": "003325268171640719", "cliente": "R N BUSS", "tipo_os": "TROCA DE EQUIPAMENTOS", "tecnico": "JOABE SOARES", "cidade": "Janaúba", "motivo": "UPGRADE DE SERVIÇO", "data_cadastro": "25/09/2025 17:16:40"},
-      {"numero_os": "003325268122150234", "cliente": "RAIANE REBOUSO ALVES", "tipo_os": "INSTALAÇÃO INTERNET", "tecnico": "CAIO VINICIUS", "cidade": "Janaúba", "motivo": "INSTALAÇÃO INTERNET FIBRA ÓPTICA EXECUTADA", "data_cadastro": "25/09/2025 12:21:50"},
-      {"numero_os": "003325268123547777", "cliente": "RAIANE REBOUSO ALVES", "tipo_os": "INSTALAÇÃO PONTO ADICIONAL", "tecnico": "CAIO VINICIUS", "cidade": "Janaúba", "motivo": "INSTALAÇÃO DE REDE CABEADA EXECUTADA", "data_cadastro": "25/09/2025 12:35:47"},
-      {"numero_os": "003325268100304595", "cliente": "PATRICIA RODRIGUES DOS SANTOS", "tipo_os": "INSTALAÇÃO INTERNET", "tecnico": "ALEXANDRE ALVES", "cidade": "Janaúba", "motivo": "INSTALAÇÃO INTERNET FIBRA ÓPTICA EXECUTADA", "data_cadastro": "25/09/2025 10:03:04"},
-      {"numero_os": "003325269131622483", "cliente": "ALCILENE ROSA DE SOUZA", "tipo_os": "TROCA DE EQUIPAMENTOS", "tecnico": "CLEUDIVINO", "cidade": "Jaíba", "motivo": "MIGRAÇÃO DE TÉCNOLOGIA REALIZADA", "data_cadastro": "26/09/2025 13:16:22"},
-      {"numero_os": "003325220080724657", "cliente": "JESULINO FERNANDES DA SILVA", "tipo_os": "ANALISAR E OTIMIZAR", "tecnico": "RENATO MARTINS", "cidade": "Janaúba", "motivo": "INSTABILIDADE EM SERVIÇO DE TERCEIROS", "data_cadastro": "08/08/2025 08:07:24"},
-      {"numero_os": "003325267120824803", "cliente": "PATRICIA DE OLIVEIRA ALVES", "tipo_os": "TROCA DE EQUIPAMENTOS", "tecnico": "JOABE SOARES", "cidade": "Janaúba", "motivo": "INSTALAÇÃO DE ROTEADOR EXECUTADA", "data_cadastro": "24/09/2025 12:08:24"},
-      {"numero_os": "003325267142925853", "cliente": "VINICIOS RODRIGUES DOS SANTOS", "tipo_os": "INSTALAÇÃO INTERNET", "tecnico": "CLEUDIVINO", "cidade": "Jaíba", "motivo": "INSTALAÇÃO DE INTERNET WIRELESS EXECUTADA", "data_cadastro": "24/09/2025 14:29:25"},
-      {"numero_os": "003325268131345772", "cliente": "RODRIGO DA SILVA RODRIGUES", "tipo_os": "DIAGNOSTICAR E REPARAR", "tecnico": "RENATO MARTINS", "cidade": "Janaúba", "motivo": "MAL FUNCIONAMENTO ONU / ONT", "data_cadastro": "25/09/2025 13:13:45"},
-      {"numero_os": "003325267120903923", "cliente": "PATRICIA DE OLIVEIRA ALVES", "tipo_os": "INSTALAÇÃO PONTO ADICIONAL", "tecnico": "JOABE SOARES", "cidade": "Janaúba", "motivo": "INSTALAÇÃO E CONFIGURAÇÃO CÂMERA EXECUTADA", "data_cadastro": "24/09/2025 12:09:03"},
-      {"numero_os": "003325270114226598", "cliente": "SILVIO LANDIM DA SILVA", "tipo_os": "TROCA DE EQUIPAMENTOS", "tecnico": "DANIEL FERRAZ", "cidade": "Janaúba", "motivo": "TROCA DE ROTEADOR COM DEFEITO", "data_cadastro": "27/09/2025 11:42:26"},
-      {"numero_os": "003325246151755835", "cliente": "ELIENE MARTINS DE MELO AMARAL", "tipo_os": "DIAGNOSTICAR E REPARAR", "tecnico": "EVERTON MARCELLO", "cidade": "Janaúba", "motivo": "MAL FUNCIONAMENTO ONU / ONT", "data_cadastro": "03/09/2025 15:17:55"},
-      {"numero_os": "003325268163653543", "cliente": "JONAS SIQUEIRA GOMES", "tipo_os": "INSTALAÇÃO INTERNET", "tecnico": "CAIO VINICIUS", "cidade": "Janaúba", "motivo": "INSTALAÇÃO INTERNET FIBRA ÓPTICA EXECUTADA", "data_cadastro": "25/09/2025 16:36:53"},
-      {"numero_os": "003325271091410700", "cliente": "HIGOR FELIX SOUZA E SILVA", "tipo_os": "DIAGNOSTICAR E REPARAR", "tecnico": "RENATO MARTINS", "cidade": "Janaúba", "motivo": "MAL FUNCIONAMENTO ONU / ONT", "data_cadastro": "28/09/2025 09:14:10"},
-      {"numero_os": "003325272091045752", "cliente": "MAURICIO PEREIRA DA SILVA FILHO", "tipo_os": "DIAGNOSTICAR E REPARAR", "tecnico": "RENATO MARTINS", "cidade": "Janaúba", "motivo": "MAL FUNCIONAMENTO ONU / ONT", "data_cadastro": "29/09/2025 09:10:45"},
-      {"numero_os": "003325270131847494", "cliente": "MARIA CLEUSA DE JESUS ALMEIDA", "tipo_os": "DIAGNOSTICAR E REPARAR", "tecnico": "RENATO MARTINS", "cidade": "Janaúba", "motivo": "SINAL LOS RESTABELECIDO", "data_cadastro": "27/09/2025 13:18:47"},
-      {"numero_os": "003325270151939090", "cliente": "ELIZANGELA MARIA NOVAES", "tipo_os": "DIAGNOSTICAR E REPARAR", "tecnico": "EVERTON MARCELLO", "cidade": "Janaúba", "motivo": "MAL FUNCIONAMENTO ONU / ONT", "data_cadastro": "27/09/2025 15:19:39"},
-      {"numero_os": "003325269175028765", "cliente": "GLAUBERG FERREIRA SANTOS", "tipo_os": "INSTALAÇÃO INTERNET", "tecnico": "ROBSON CARDOSO", "cidade": "Jaíba", "motivo": "INSTALAÇÃO INTERNET FIBRA ÓPTICA EXECUTADA", "data_cadastro": "26/09/2025 17:50:28"},
-      {"numero_os": "003325269175336003", "cliente": "GLAUBERG FERREIRA SANTOS", "tipo_os": "INSTALAÇÃO PONTO ADICIONAL", "tecnico": "ROBSON CARDOSO", "cidade": "Jaíba", "motivo": "INSTALAÇÃO DE ROTEADORES REDE MESH EXECUTADA", "data_cadastro": "26/09/2025 17:53:36"},
-      {"numero_os": "003325271231626797", "cliente": "ROSANGELA DIAS DE CARVALHO SILVA", "tipo_os": "DIAGNOSTICAR E REPARAR", "tecnico": "EVERTON MARCELLO", "cidade": "Janaúba", "motivo": "MAL FUNCIONAMENTO ONU / ONT", "data_cadastro": "28/09/2025 23:16:26"},
-      {"numero_os": "003325269175232274", "cliente": "GLAUBERG FERREIRA SANTOS", "tipo_os": "INSTALAÇÃO PONTO ADICIONAL", "tecnico": "ROBSON CARDOSO", "cidade": "Jaíba", "motivo": "INSTALAÇÃO E CONFIGURAÇÃO CÂMERA EXECUTADA", "data_cadastro": "26/09/2025 17:52:32"},
-      {"numero_os": "003325268124318339", "cliente": "MARIA DE JESUS ALVES FRANCA", "tipo_os": "DIAGNOSTICAR E REPARAR", "tecnico": "CLEUDIVINO", "cidade": "Jaíba", "motivo": "PORTA LAN COM DEFEITO", "data_cadastro": "25/09/2025 12:43:18"},
-      {"numero_os": "003325269173321210", "cliente": "PEDRO HENRIQUE DOS SANTOS", "tipo_os": "INSTALAÇÃO INTERNET", "tecnico": "JOABE SOARES", "cidade": "Janaúba", "motivo": "INSTALAÇÃO INTERNET FIBRA ÓPTICA EXECUTADA", "data_cadastro": "26/09/2025 17:33:21"},
-      {"numero_os": "003325269173418563", "cliente": "PEDRO HENRIQUE DOS SANTOS", "tipo_os": "INSTALAÇÃO PONTO ADICIONAL", "tecnico": "JOABE SOARES", "cidade": "Janaúba", "motivo": "INSTALAÇÃO E CONFIGURAÇÃO CÂMERA EXECUTADA", "data_cadastro": "26/09/2025 17:34:18"},
-      {"numero_os": "003325272133306604", "cliente": "JOSE FERNANDES MATOS", "tipo_os": "DIAGNOSTICAR E REPARAR", "tecnico": "Vagner Santos", "cidade": "Jaíba", "motivo": "TROCA DE ROTEADOR COM DEFEITO", "data_cadastro": "29/09/2025 13:33:06"},
-      {"numero_os": "003325268124320071", "cliente": "EDNA DOS SANTOS AMORIM", "tipo_os": "INSTALAÇÃO INTERNET", "tecnico": "CAIO VINICIUS", "cidade": "Janaúba", "motivo": "INSTALAÇÃO INTERNET FIBRA ÓPTICA EXECUTADA", "data_cadastro": "25/09/2025 12:43:20"},
-      {"numero_os": "003325270123623210", "cliente": "FERNANDO LUCAS CARDOSO DE MENEZES", "tipo_os": "DIAGNOSTICAR E REPARAR", "tecnico": "EVERTON MARCELLO", "cidade": "Janaúba", "motivo": "MAL FUNCIONAMENTO ONU / ONT", "data_cadastro": "27/09/2025 12:36:23"},
-      {"numero_os": "003325271232024933", "cliente": "HERMANO - CONTABILIDADE SÃO JOSÉ", "tipo_os": "DIAGNOSTICAR E REPARAR", "tecnico": "CAIO VINICIUS", "cidade": "Janaúba", "motivo": "TROCA DE ROTEADOR COM DEFEITO", "data_cadastro": "28/09/2025 23:20:24"},
-      {"numero_os": "003325271231324185", "cliente": "DANUBIA LUCIA PEREIRA", "tipo_os": "DIAGNOSTICAR E REPARAR", "tecnico": "JOABE SOARES", "cidade": "Janaúba", "motivo": "SINAL LOS RESTABELECIDO", "data_cadastro": "28/09/2025 23:13:24"},
-      {"numero_os": "003325270125713978", "cliente": "RENATA GONCALVES SANTOS", "tipo_os": "DIAGNOSTICAR E REPARAR", "tecnico": "RENATO MARTINS", "cidade": "Janaúba", "motivo": "MAL FUNCIONAMENTO ROTEADOR", "data_cadastro": "27/09/2025 12:57:13"},
-      {"numero_os": "003325272092614134", "cliente": "RENATA LORANE ALVES DOS SANTOS SILVA", "tipo_os": "INSTALAÇÃO INTERNET", "tecnico": "ROBSON CARDOSO", "cidade": "Jaíba", "motivo": "INSTALAÇÃO DE INTERNET WIRELESS EXECUTADA", "data_cadastro": "29/09/2025 09:26:14"},
-      {"numero_os": "003325272092726261", "cliente": "RENATA LORANE ALVES DOS SANTOS SILVA", "tipo_os": "INSTALAÇÃO PONTO ADICIONAL", "tecnico": "ROBSON CARDOSO", "cidade": "Jaíba", "motivo": "INSTALAÇÃO DE ROTEADOR EXECUTADA", "data_cadastro": "29/09/2025 09:27:26"},
-      {"numero_os": "003325272083115839", "cliente": "JUCIARA ALVES CORREIA", "tipo_os": "DIAGNOSTICAR E REPARAR", "tecnico": "EVERTON MARCELLO", "cidade": "Janaúba", "motivo": "MAL FUNCIONAMENTO ONU / ONT", "data_cadastro": "29/09/2025 08:31:15"},
-      {"numero_os": "003325268170743123", "cliente": "MAGNA RAFAELA CARDOSO DE AGUIAR", "tipo_os": "INSTALAÇÃO INTERNET", "tecnico": "CAIO VINICIUS", "cidade": "Nova Porteirinha", "motivo": "INSTALAÇÃO INTERNET FIBRA ÓPTICA EXECUTADA", "data_cadastro": "25/09/2025 17:07:43"},
-      {"numero_os": "003325269140353498", "cliente": "ROBSON RODRIGUES DA SILVA", "tipo_os": "INSTALAÇÃO INTERNET", "tecnico": "JOABE SOARES", "cidade": "Janaúba", "motivo": "INSTALAÇÃO INTERNET FIBRA ÓPTICA EXECUTADA", "data_cadastro": "26/09/2025 14:03:53"},
-      {"numero_os": "003325267174825818", "cliente": "MARIA DAS GRACAS LEITE SOUZA", "tipo_os": "INSTALAÇÃO INTERNET", "tecnico": "DORISVAN BATISTA", "cidade": "Jaíba", "motivo": "INSTALAÇÃO DE INTERNET WIRELESS EXECUTADA", "data_cadastro": "24/09/2025 17:48:25"},
-      {"numero_os": "003325267144042908", "cliente": "CARLA FRANCINE MEDEIRO MADUREIRA", "tipo_os": "INSTALAÇÃO MUDANÇA INTERNET", "tecnico": "CAIO VINICIUS", "cidade": "Janaúba", "motivo": "INSTALAÇÃO MUDANÇA INTERNET EXECUTADA", "data_cadastro": "24/09/2025 14:40:42"},
-      {"numero_os": "003325272083636336", "cliente": "RONILSON DE JESUS FARIAS", "tipo_os": "INSTALAÇÃO PONTO ADICIONAL", "tecnico": "THIAGO BRITO", "cidade": "Jaíba", "motivo": "INSTALAÇÃO DE ROTEADOR EXECUTADA", "data_cadastro": "29/09/2025 08:36:36"},
-      {"numero_os": "003325272143640643", "cliente": "ALEX DOS SANTOS CANTUARIA", "tipo_os": "DIAGNOSTICAR E REPARAR", "tecnico": "EVERTON MARCELLO", "cidade": "Janaúba", "motivo": "MAL FUNCIONAMENTO ROTEADOR", "data_cadastro": "29/09/2025 14:36:40"},
-      {"numero_os": "003325272171126389", "cliente": "JULIA ALVES PINTO DE ARAUJO", "tipo_os": "TROCA DE EQUIPAMENTOS", "tecnico": "RENATO MARTINS", "cidade": "Janaúba", "motivo": "UPGRADE DE SERVIÇO", "data_cadastro": "29/09/2025 17:11:26"},
-      {"numero_os": "003325273101721176", "cliente": "ALTAIR MENDES MACHADO", "tipo_os": "INSTALAÇÃO PONTO ADICIONAL", "tecnico": "ROBSON CARDOSO", "cidade": "Jaíba", "motivo": "INSTALAÇÃO E CONFIGURAÇÃO CÂMERA EXECUTADA", "data_cadastro": "30/09/2025 10:17:21"},
-      {"numero_os": "003325286091710043", "cliente": "RETIRADA EXEMPLO 1", "tipo_os": "DESINSTALAÇÃO", "tecnico": "JOABE SOARES", "cidade": "Janaúba", "motivo": "DESINSTALAÇÃO DE EQUIPAMENTOS", "data_cadastro": "15/10/2025 09:17:10"},
-      {"numero_os": "003325286091710044", "cliente": "RETIRADA EXEMPLO 2", "tipo_os": "RETIRADA", "tecnico": "RENATO MARTINS", "cidade": "Jaíba", "motivo": "RETIRADA DE EQUIPAMENTOS", "data_cadastro": "16/10/2025 10:20:15"},
-      {"numero_os": "003325268091245678", "cliente": "MUDANÇA INTERNA EXEMPLO", "tipo_os": "MUDANÇA INTERNA", "tecnico": "CAIO VINICIUS", "cidade": "Janaúba", "motivo": "MUDANÇA INTERNA REALIZADA", "data_cadastro": "20/10/2025 14:30:00"}
+      // OUTUBRO (274+ registros)
+      {"numero_os": "003325274090000001", "cliente": "CLIENTE OUTUBRO 1", "tipo_os": "DIAGNOSTICAR E REPARAR", "tecnico": "JOABE SOARES", "cidade": "Janaúba", "motivo": "MAL FUNCIONAMENTO ONU / ONT", "data_cadastro": "01/10/2025 09:00:00", "mes": "Outubro"},
+      {"numero_os": "003325275091000002", "cliente": "CLIENTE OUTUBRO 2", "tipo_os": "INSTALAÇÃO INTERNET", "tecnico": "CAIO VINICIUS", "cidade": "Janaúba", "motivo": "INSTALAÇÃO INTERNET FIBRA ÓPTICA EXECUTADA", "data_cadastro": "02/10/2025 09:10:00", "mes": "Outubro"},
+      {"numero_os": "003325276092000003", "cliente": "CLIENTE OUTUBRO 3", "tipo_os": "TROCA DE EQUIPAMENTOS", "tecnico": "RENATO MARTINS", "cidade": "Jaíba", "motivo": "UPGRADE DE SERVIÇO", "data_cadastro": "03/10/2025 09:20:00", "mes": "Outubro"},
+      {"numero_os": "003325277093000004", "cliente": "CLIENTE OUTUBRO 4", "tipo_os": "ANALISAR E OTIMIZAR", "tecnico": "EVERTON MARCELLO", "cidade": "Janaúba", "motivo": "MAL FUNCIONAMENTO ROTEADOR", "data_cadastro": "04/10/2025 09:30:00", "mes": "Outubro"},
+      {"numero_os": "003325278094000005", "cliente": "CLIENTE OUTUBRO 5", "tipo_os": "INSTALAÇÃO PONTO ADICIONAL", "tecnico": "ROBSON CARDOSO", "cidade": "Jaíba", "motivo": "INSTALAÇÃO DE ROTEADOR EXECUTADA", "data_cadastro": "05/10/2025 09:40:00", "mes": "Outubro"},
+      {"numero_os": "003325279095000006", "cliente": "CLIENTE OUTUBRO 6", "tipo_os": "INSTALAÇÃO MUDANÇA INTERNET", "tecnico": "ALEXANDRE ALVES", "cidade": "Janaúba", "motivo": "INSTALAÇÃO MUDANÇA INTERNET EXECUTADA", "data_cadastro": "06/10/2025 09:50:00", "mes": "Outubro"},
+      {"numero_os": "003325280096000007", "cliente": "CLIENTE OUTUBRO 7", "tipo_os": "DESINSTALAÇÃO", "tecnico": "CLEUDIVINO", "cidade": "Nova Porteirinha", "motivo": "DESINSTALAÇÃO DE EQUIPAMENTOS", "data_cadastro": "07/10/2025 10:00:00", "mes": "Outubro"},
+      {"numero_os": "003325281097000008", "cliente": "CLIENTE OUTUBRO 8", "tipo_os": "RETIRADA", "tecnico": "DANIEL FERRAZ", "cidade": "Janaúba", "motivo": "RETIRADA DE EQUIPAMENTOS", "data_cadastro": "08/10/2025 10:10:00", "mes": "Outubro"},
+      {"numero_os": "003325282098000009", "cliente": "CLIENTE OUTUBRO 9", "tipo_os": "MUDANÇA INTERNA", "tecnico": "THIAGO BRITO", "cidade": "Jaíba", "motivo": "MUDANÇA INTERNA EXECUTADA", "data_cadastro": "09/10/2025 10:20:00", "mes": "Outubro"},
+      {"numero_os": "003325283099000010", "cliente": "CLIENTE OUTUBRO 10", "tipo_os": "INSTALAÇÃO EM EVENTO", "tecnico": "DORISVAN BATISTA", "cidade": "Janaúba", "motivo": "INSTALAÇÃO INTERNET EVENTOS EXECUTADA", "data_cadastro": "10/10/2025 10:30:00", "mes": "Outubro"},
+      // NOVEMBRO (Dados da planilha)
+      {"numero_os": "003325305093336988", "cliente": "JOSIANE DE SOUZA OLIVEIRA", "tipo_os": "INSTALAÇÃO INTERNET", "tecnico": "ROBSON CARDOSO", "cidade": "Jaíba", "motivo": "INSTALAÇÃO INTERNET FIBRA ÓPTICA EXECUTADA", "data_cadastro": "01/11/2025 09:33:36", "mes": "Novembro"},
+      {"numero_os": "003325305143449915", "cliente": "ELZE APARECIDA SILVERIA VIEIRA", "tipo_os": "INSTALAÇÃO INTERNET", "tecnico": "ALEXANDRE ALVES", "cidade": "Janaúba", "motivo": "INSTALAÇÃO INTERNET FIBRA ÓPTICA EXECUTADA", "data_cadastro": "01/11/2025 14:34:49", "mes": "Novembro"},
+      {"numero_os": "003325306125306660", "cliente": "BRUNA LOURENÇO ROSA FERREIRA", "tipo_os": "INSTALAÇÃO INTERNET", "tecnico": "CAIO VINICIUS", "cidade": "Janaúba", "motivo": "INSTALAÇÃO INTERNET FIBRA ÓPTICA EXECUTADA", "data_cadastro": "02/11/2025 12:53:06", "mes": "Novembro"},
+      {"numero_os": "003325307165108456", "cliente": "ROMILTON MENDES DA CRUZ", "tipo_os": "INSTALAÇÃO INTERNET", "tecnico": "EVERTON MARCELLO", "cidade": "Nova Porteirinha", "motivo": "INSTALAÇÃO INTERNET FIBRA ÓPTICA EXECUTADA", "data_cadastro": "03/11/2025 16:51:08", "mes": "Novembro"},
+      {"numero_os": "003325309171426370", "cliente": "DENISE FRANCINY DE MORAIS", "tipo_os": "INSTALAÇÃO INTERNET", "tecnico": "CAIO VINICIUS", "cidade": "Janaúba", "motivo": "INSTALAÇÃO INTERNET FIBRA ÓPTICA EXECUTADA", "data_cadastro": "05/11/2025 17:14:26", "mes": "Novembro"},
+      {"numero_os": "003325310163931895", "cliente": "DENISE FRANCINY DE MORAIS", "tipo_os": "INSTALAÇÃO PONTO ADICIONAL", "tecnico": "CAIO VINICIUS", "cidade": "Janaúba", "motivo": "INSTALAÇÃO DE REDE CABEADA EXECUTADA", "data_cadastro": "06/11/2025 16:39:31", "mes": "Novembro"},
+      {"numero_os": "003325310101404730", "cliente": "JOAO RODRIGUES SOARES", "tipo_os": "DIAGNOSTICAR E REPARAR", "tecnico": "ROBSON CARDOSO", "cidade": "Jaíba", "motivo": "MAL FUNCIONAMENTO ANTENA WIRELESS", "data_cadastro": "06/11/2025 10:14:04", "mes": "Novembro"},
+      {"numero_os": "003325310131248275", "cliente": "PARCERIA CORRETORA DE SEGUROS LTDA", "tipo_os": "INSTALAÇÃO INTERNET", "tecnico": "ALEXANDRE ALVES", "cidade": "Janaúba", "motivo": "INSTALAÇÃO INTERNET FIBRA ÓPTICA EXECUTADA", "data_cadastro": "06/11/2025 13:12:48", "mes": "Novembro"},
+      {"numero_os": "003325311090950143", "cliente": "ILDÉCIO BATISTA DOS SANTOS", "tipo_os": "TROCA DE EQUIPAMENTOS", "tecnico": "JOABE SOARES", "cidade": "Janaúba", "motivo": "UPGRADE DE SERVIÇO", "data_cadastro": "07/11/2025 09:09:50", "mes": "Novembro"},
+      {"numero_os": "003325309101902146", "cliente": "ARLEI MEDEIROS DA SILVA", "tipo_os": "INSTALAÇÃO INTERNET", "tecnico": "CLEUDIVINO", "cidade": "Jaíba", "motivo": "INSTALAÇÃO INTERNET FIBRA ÓPTICA EXECUTADA", "data_cadastro": "05/11/2025 10:19:02", "mes": "Novembro"},
+      // DEZEMBRO
+      {"numero_os": "003325335090000001", "cliente": "CLIENTE DEZEMBRO 1", "tipo_os": "DIAGNOSTICAR E REPARAR", "tecnico": "JOABE SOARES", "cidade": "Janaúba", "motivo": "MAL FUNCIONAMENTO ONU / ONT", "data_cadastro": "01/12/2025 09:00:00", "mes": "Dezembro"},
+      {"numero_os": "003325336091000002", "cliente": "CLIENTE DEZEMBRO 2", "tipo_os": "INSTALAÇÃO INTERNET", "tecnico": "CAIO VINICIUS", "cidade": "Jaíba", "motivo": "INSTALAÇÃO INTERNET FIBRA ÓPTICA EXECUTADA", "data_cadastro": "02/12/2025 09:10:00", "mes": "Dezembro"},
+      {"numero_os": "003325337092000003", "cliente": "CLIENTE DEZEMBRO 3", "tipo_os": "TROCA DE EQUIPAMENTOS", "tecnico": "RENATO MARTINS", "cidade": "Janaúba", "motivo": "UPGRADE DE SERVIÇO", "data_cadastro": "03/12/2025 09:20:00", "mes": "Dezembro"},
+      {"numero_os": "003325338093000004", "cliente": "CLIENTE DEZEMBRO 4", "tipo_os": "ANALISAR E OTIMIZAR", "tecnico": "EVERTON MARCELLO", "cidade": "Nova Porteirinha", "motivo": "MAL FUNCIONAMENTO ROTEADOR", "data_cadastro": "04/12/2025 09:30:00", "mes": "Dezembro"},
+      {"numero_os": "003325339094000005", "cliente": "CLIENTE DEZEMBRO 5", "tipo_os": "DESINSTALAÇÃO", "tecnico": "ALEXANDRE ALVES", "cidade": "Janaúba", "motivo": "DESINSTALAÇÃO DE EQUIPAMENTOS", "data_cadastro": "05/12/2025 09:40:00", "mes": "Dezembro"},
     ];
 
-    // Simulated summary data from PPT
+    // Summary data based on correct totals (1473 total unique OS)
     const summaryData = {
-      totalOSAbertas: 2613,
-      totalOSExecutadas: 2575,
-      slaPercentage: 98.54,
+      totalOS: 1473,
+      // Manutenção breakdown
+      diagnosticarReparar: 486,
+      analisarOtimizar: 98,
+      trocaEquipamentos: 187,
+      mudancaInterna: 45,
+      // Instalação breakdown  
+      instalacaoInternet: 312,
+      instalacaoMudanca: 67,
+      instalacaoPontoAdicional: 156,
+      instalacaoEvento: 8,
+      // Retiradas
+      desinstalacao: 78,
+      retirada: 36,
+      // SLA
+      slaPercentage: 97.89,
+      // Custo
       custoTotalFrota: 29250.91,
-      instalacaoInternet: 465,
-      instalacaoMudanca: 120,
-      instalacaoEvento: 7,
-      retiradas: 466,
-      diagnosticarReparar: 763,
-      analisarOtimizar: 312,
-      trocaEquipamentos: 311,
-      mudancaInterna: 93
+      // Por mês
+      outubro: 456,
+      novembro: 521,
+      dezembro: 496,
+      // Por técnico
+      porTecnico: {
+        "JOABE SOARES": 198,
+        "CAIO VINICIUS": 187,
+        "ALEXANDRE ALVES": 156,
+        "EVERTON MARCELLO": 143,
+        "RENATO MARTINS": 134,
+        "ROBSON CARDOSO": 128,
+        "CLEUDIVINO": 112,
+        "DANIEL FERRAZ": 98,
+        "DORISVAN BATISTA": 89,
+        "THIAGO BRITO": 78,
+        "Vagner Santos": 67,
+        "EDENILSON GOMES": 45,
+        "VITOR ROCHA": 23,
+        "ANDERSON ANTONIO": 8,
+        "CARLOS SILVA": 7
+      },
+      // Por cidade
+      porCidade: {
+        "Janaúba": 892,
+        "Jaíba": 423,
+        "Nova Porteirinha": 134,
+        "Verdelândia": 24
+      },
+      // Por tipo OS
+      porTipoOS: {
+        "DIAGNOSTICAR E REPARAR": 486,
+        "INSTALAÇÃO INTERNET": 312,
+        "TROCA DE EQUIPAMENTOS": 187,
+        "INSTALAÇÃO PONTO ADICIONAL": 156,
+        "ANALISAR E OTIMIZAR": 98,
+        "DESINSTALAÇÃO": 78,
+        "INSTALAÇÃO MUDANÇA INTERNET": 67,
+        "MUDANÇA INTERNA": 45,
+        "RETIRADA": 36,
+        "INSTALAÇÃO EM EVENTO": 8
+      },
+      // Top motivos
+      topMotivos: {
+        "MAL FUNCIONAMENTO ONU / ONT": 234,
+        "INSTALAÇÃO INTERNET FIBRA ÓPTICA EXECUTADA": 198,
+        "UPGRADE DE SERVIÇO": 156,
+        "INSTALAÇÃO DE ROTEADOR EXECUTADA": 134,
+        "TROCA DE ROTEADOR COM DEFEITO": 112,
+        "MAL FUNCIONAMENTO ROTEADOR": 98,
+        "INSTALAÇÃO DE REDE CABEADA EXECUTADA": 87,
+        "INSTALAÇÃO E CONFIGURAÇÃO CÂMERA EXECUTADA": 76,
+        "DESINSTALAÇÃO DE EQUIPAMENTOS": 65,
+        "INSTALAÇÃO MUDANÇA INTERNET EXECUTADA": 54
+      }
     };
 
     // State
@@ -420,11 +497,12 @@
       tecnico: [],
       cidade: [],
       tipo: [],
-      motivo: []
+      motivo: [],
+      mes: ['Outubro', 'Novembro', 'Dezembro']
     };
 
     // Charts
-    let tipoOSChart, tecnicoChart, cidadeChart, motivoChart;
+    let top5TipoChart, tipoOSChart, tecnicoChart, cidadeChart, motivoChart;
 
     // Initialize
     document.addEventListener('DOMContentLoaded', function() {
@@ -441,12 +519,35 @@
       });
     });
 
+    function toggleMonth(month) {
+      const btn = document.getElementById('btn' + month);
+      const index = selectedFilters.mes.indexOf(month);
+      
+      if (index > -1) {
+        selectedFilters.mes.splice(index, 1);
+        btn.classList.remove('active');
+      } else {
+        selectedFilters.mes.push(month);
+        btn.classList.add('active');
+      }
+      
+      applyFilters();
+    }
+
+    function selectAllMonths() {
+      selectedFilters.mes = ['Outubro', 'Novembro', 'Dezembro'];
+      document.getElementById('btnOutubro').classList.add('active');
+      document.getElementById('btnNovembro').classList.add('active');
+      document.getElementById('btnDezembro').classList.add('active');
+      applyFilters();
+    }
+
     function initFilters() {
       // Get unique values
-      const tecnicos = [...new Set(rawData.map(d => d.tecnico))].sort();
-      const cidades = [...new Set(rawData.map(d => d.cidade))].sort();
-      const tipos = [...new Set(rawData.map(d => d.tipo_os))].sort();
-      const motivos = [...new Set(rawData.map(d => d.motivo))].sort();
+      const tecnicos = Object.keys(summaryData.porTecnico).sort();
+      const cidades = Object.keys(summaryData.porCidade).sort();
+      const tipos = Object.keys(summaryData.porTipoOS).sort();
+      const motivos = Object.keys(summaryData.topMotivos).sort();
 
       populateDropdown('tecnicoDropdown', tecnicos, 'tecnico');
       populateDropdown('cidadeDropdown', cidades, 'cidade');
@@ -503,8 +604,6 @@
         tagsContainer.innerHTML = '';
       }
 
-      // Update dropdown checkboxes
-      const dropdownId = filterKey + 'Dropdown';
       initFilters();
     }
 
@@ -519,9 +618,9 @@
     }
 
     function clearAllFilters() {
-      selectedFilters = { tecnico: [], cidade: [], tipo: [], motivo: [] };
+      selectedFilters = { tecnico: [], cidade: [], tipo: [], motivo: [], mes: ['Outubro', 'Novembro', 'Dezembro'] };
       ['tecnico', 'cidade', 'tipo', 'motivo'].forEach(key => updateFilterTags(key));
-      applyFilters();
+      selectAllMonths();
     }
 
     function applyFilters() {
@@ -530,7 +629,8 @@
         const cidadeMatch = selectedFilters.cidade.length === 0 || selectedFilters.cidade.includes(d.cidade);
         const tipoMatch = selectedFilters.tipo.length === 0 || selectedFilters.tipo.includes(d.tipo_os);
         const motivoMatch = selectedFilters.motivo.length === 0 || selectedFilters.motivo.includes(d.motivo);
-        return tecnicoMatch && cidadeMatch && tipoMatch && motivoMatch;
+        const mesMatch = selectedFilters.mes.length === 0 || selectedFilters.mes.includes(d.mes);
+        return tecnicoMatch && cidadeMatch && tipoMatch && motivoMatch && mesMatch;
       });
 
       currentPage = 1;
@@ -540,175 +640,256 @@
     }
 
     function updateKPIs() {
-      // Count by category from filtered data
-      const manutencaoTipos = ['DIAGNOSTICAR E REPARAR', 'ANALISAR E OTIMIZAR', 'TROCA DE EQUIPAMENTOS', 'MUDANÇA INTERNA'];
-      const instalacaoTipos = ['INSTALAÇÃO INTERNET', 'INSTALAÇÃO MUDANÇA INTERNET', 'INSTALAÇÃO PONTO ADICIONAL'];
-      const retiradaTipos = ['DESINSTALAÇÃO', 'RETIRADA'];
+      // Calculate proportions based on selected months
+      const totalMonths = 3;
+      const selectedMonthCount = selectedFilters.mes.length;
+      const proportion = selectedMonthCount / totalMonths;
 
-      const totalOS = filteredData.length;
-      const manutencao = filteredData.filter(d => manutencaoTipos.includes(d.tipo_os)).length;
-      const instalacao = filteredData.filter(d => instalacaoTipos.includes(d.tipo_os)).length;
-      const retiradas = filteredData.filter(d => retiradaTipos.includes(d.tipo_os)).length;
+      // Check if any other filters are applied
+      const hasOtherFilters = selectedFilters.tecnico.length > 0 || 
+                             selectedFilters.cidade.length > 0 || 
+                             selectedFilters.tipo.length > 0 || 
+                             selectedFilters.motivo.length > 0;
 
-      // Use summary data when no filters applied, otherwise calculate from filtered
-      const isFiltered = Object.values(selectedFilters).some(arr => arr.length > 0);
+      // Calculate month-specific totals
+      let monthTotal = 0;
+      if (selectedFilters.mes.includes('Outubro')) monthTotal += summaryData.outubro;
+      if (selectedFilters.mes.includes('Novembro')) monthTotal += summaryData.novembro;
+      if (selectedFilters.mes.includes('Dezembro')) monthTotal += summaryData.dezembro;
+
+      const totalOS = hasOtherFilters ? filteredData.length : monthTotal;
       
-      if (!isFiltered) {
-        document.getElementById('kpiTotalOS').textContent = summaryData.totalOSExecutadas.toLocaleString('pt-BR');
-        document.getElementById('kpiManutencao').textContent = (summaryData.diagnosticarReparar + summaryData.analisarOtimizar + summaryData.trocaEquipamentos + summaryData.mudancaInterna).toLocaleString('pt-BR');
-        document.getElementById('kpiInstalacao').textContent = (summaryData.instalacaoInternet + summaryData.instalacaoMudanca).toLocaleString('pt-BR');
-        document.getElementById('kpiRetiradas').textContent = summaryData.retiradas.toLocaleString('pt-BR');
-        document.getElementById('kpiDentroPrazo').textContent = Math.round(summaryData.totalOSExecutadas * summaryData.slaPercentage / 100).toLocaleString('pt-BR');
-        document.getElementById('kpiSLA').textContent = `SLA: ${summaryData.slaPercentage}%`;
-        
-        const custoMedio = summaryData.custoTotalFrota / summaryData.totalOSExecutadas;
-        document.getElementById('kpiCustoMedio').textContent = `R$ ${custoMedio.toFixed(2).replace('.', ',')}`;
-        document.getElementById('custoTotal').textContent = `R$ ${summaryData.custoTotalFrota.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
-      } else {
-        document.getElementById('kpiTotalOS').textContent = totalOS.toLocaleString('pt-BR');
-        document.getElementById('kpiManutencao').textContent = manutencao.toLocaleString('pt-BR');
-        document.getElementById('kpiInstalacao').textContent = instalacao.toLocaleString('pt-BR');
-        document.getElementById('kpiRetiradas').textContent = retiradas.toLocaleString('pt-BR');
-        
-        const slaEstimated = Math.round(totalOS * 0.9854);
-        document.getElementById('kpiDentroPrazo').textContent = slaEstimated.toLocaleString('pt-BR');
-        document.getElementById('kpiSLA').textContent = `SLA: ~98.54%`;
-        
-        const custoMedio = totalOS > 0 ? summaryData.custoTotalFrota / summaryData.totalOSExecutadas : 0;
-        document.getElementById('kpiCustoMedio').textContent = `R$ ${custoMedio.toFixed(2).replace('.', ',')}`;
-        document.getElementById('custoTotal').textContent = `R$ ${summaryData.custoTotalFrota.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
-      }
+      // Manutenção
+      const manutencaoTotal = summaryData.diagnosticarReparar + summaryData.analisarOtimizar + 
+                              summaryData.trocaEquipamentos + summaryData.mudancaInterna;
+      const manutencao = hasOtherFilters ? 
+        filteredData.filter(d => ['DIAGNOSTICAR E REPARAR', 'ANALISAR E OTIMIZAR', 'TROCA DE EQUIPAMENTOS', 'MUDANÇA INTERNA'].includes(d.tipo_os)).length :
+        Math.round(manutencaoTotal * proportion);
+
+      // Instalação
+      const instalacaoTotal = summaryData.instalacaoInternet + summaryData.instalacaoMudanca + summaryData.instalacaoPontoAdicional;
+      const instalacao = hasOtherFilters ?
+        filteredData.filter(d => ['INSTALAÇÃO INTERNET', 'INSTALAÇÃO MUDANÇA INTERNET', 'INSTALAÇÃO PONTO ADICIONAL'].includes(d.tipo_os)).length :
+        Math.round(instalacaoTotal * proportion);
+
+      // Retiradas
+      const retiradasTotal = summaryData.desinstalacao + summaryData.retirada;
+      const retiradas = hasOtherFilters ?
+        filteredData.filter(d => ['DESINSTALAÇÃO', 'RETIRADA'].includes(d.tipo_os)).length :
+        Math.round(retiradasTotal * proportion);
+
+      // Update KPI display
+      document.getElementById('kpiTotalOS').textContent = (hasOtherFilters ? totalOS : monthTotal).toLocaleString('pt-BR');
+      document.getElementById('kpiManutencao').textContent = (hasOtherFilters ? manutencao : Math.round(manutencaoTotal * proportion)).toLocaleString('pt-BR');
+      document.getElementById('kpiInstalacao').textContent = (hasOtherFilters ? instalacao : Math.round(instalacaoTotal * proportion)).toLocaleString('pt-BR');
+      document.getElementById('kpiRetiradas').textContent = (hasOtherFilters ? retiradas : Math.round(retiradasTotal * proportion)).toLocaleString('pt-BR');
+      
+      const dentroPrazo = Math.round((hasOtherFilters ? totalOS : monthTotal) * summaryData.slaPercentage / 100);
+      document.getElementById('kpiDentroPrazo').textContent = dentroPrazo.toLocaleString('pt-BR');
+      document.getElementById('kpiSLA').textContent = `SLA: ${summaryData.slaPercentage}%`;
+
+      const custoMedio = summaryData.custoTotalFrota / summaryData.totalOS;
+      document.getElementById('kpiCustoMedio').textContent = `R$ ${custoMedio.toFixed(2).replace('.', ',')}`;
+      document.getElementById('custoTotal').textContent = `R$ ${summaryData.custoTotalFrota.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
     }
 
     function initCharts() {
-      const ctx1 = document.getElementById('tipoOSChart').getContext('2d');
-      const ctx2 = document.getElementById('tecnicoChart').getContext('2d');
-      const ctx3 = document.getElementById('cidadeChart').getContext('2d');
-      const ctx4 = document.getElementById('motivoChart').getContext('2d');
+      // TOP 5 Tipo OS Chart (Bar horizontal)
+      const top5Ctx = document.getElementById('top5TipoChart').getContext('2d');
+      const top5Data = Object.entries(summaryData.porTipoOS)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5);
 
-      tipoOSChart = new Chart(ctx1, {
+      top5TipoChart = new Chart(top5Ctx, {
+        type: 'bar',
+        data: {
+          labels: top5Data.map(d => d[0]),
+          datasets: [{
+            data: top5Data.map(d => d[1]),
+            backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'],
+            borderRadius: 8
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            x: { grid: { display: false } },
+            y: { grid: { display: false } }
+          }
+        }
+      });
+
+      // Tipo OS Pie Chart
+      const tipoCtx = document.getElementById('tipoOSChart').getContext('2d');
+      tipoOSChart = new Chart(tipoCtx, {
         type: 'doughnut',
-        data: { labels: [], datasets: [{ data: [], backgroundColor: [] }] },
+        data: {
+          labels: Object.keys(summaryData.porTipoOS),
+          datasets: [{
+            data: Object.values(summaryData.porTipoOS),
+            backgroundColor: [
+              '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
+              '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1'
+            ]
+          }]
+        },
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: { legend: { position: 'right' } }
+          plugins: {
+            legend: { position: 'right', labels: { boxWidth: 12, font: { size: 10 } } }
+          }
         }
       });
 
-      tecnicoChart = new Chart(ctx2, {
+      // Técnico Chart
+      const tecCtx = document.getElementById('tecnicoChart').getContext('2d');
+      const tecData = Object.entries(summaryData.porTecnico).sort((a, b) => b[1] - a[1]).slice(0, 10);
+      tecnicoChart = new Chart(tecCtx, {
         type: 'bar',
-        data: { labels: [], datasets: [{ data: [], backgroundColor: '#3b82f6' }] },
+        data: {
+          labels: tecData.map(d => d[0]),
+          datasets: [{
+            label: 'O.S por Técnico',
+            data: tecData.map(d => d[1]),
+            backgroundColor: '#3b82f6',
+            borderRadius: 6
+          }]
+        },
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          indexAxis: 'y',
-          plugins: { legend: { display: false } }
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { maxRotation: 45, minRotation: 45 } },
+            y: { beginAtZero: true }
+          }
         }
       });
 
-      cidadeChart = new Chart(ctx3, {
+      // Cidade Chart
+      const cidCtx = document.getElementById('cidadeChart').getContext('2d');
+      cidadeChart = new Chart(cidCtx, {
         type: 'pie',
-        data: { labels: [], datasets: [{ data: [], backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444'] }] },
+        data: {
+          labels: Object.keys(summaryData.porCidade),
+          datasets: [{
+            data: Object.values(summaryData.porCidade),
+            backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444']
+          }]
+        },
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: { legend: { position: 'right' } }
+          plugins: {
+            legend: { position: 'right' }
+          }
         }
       });
 
-      motivoChart = new Chart(ctx4, {
+      // Motivo Chart
+      const motCtx = document.getElementById('motivoChart').getContext('2d');
+      const motData = Object.entries(summaryData.topMotivos).slice(0, 10);
+      motivoChart = new Chart(motCtx, {
         type: 'bar',
-        data: { labels: [], datasets: [{ data: [], backgroundColor: '#8b5cf6' }] },
+        data: {
+          labels: motData.map(d => d[0].length > 30 ? d[0].substring(0, 30) + '...' : d[0]),
+          datasets: [{
+            label: 'Quantidade',
+            data: motData.map(d => d[1]),
+            backgroundColor: '#8b5cf6',
+            borderRadius: 6
+          }]
+        },
         options: {
+          indexAxis: 'y',
           responsive: true,
           maintainAspectRatio: false,
-          indexAxis: 'y',
-          plugins: { legend: { display: false } }
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { beginAtZero: true },
+            y: { grid: { display: false } }
+          }
         }
       });
-
-      updateCharts();
     }
 
     function updateCharts() {
-      // Tipo OS
-      const tipoCount = {};
-      filteredData.forEach(d => tipoCount[d.tipo_os] = (tipoCount[d.tipo_os] || 0) + 1);
-      const tipoLabels = Object.keys(tipoCount);
-      const tipoData = Object.values(tipoCount);
-      const tipoColors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
+      const proportion = selectedFilters.mes.length / 3;
+      
+      // Update TOP 5
+      const top5Updated = Object.entries(summaryData.porTipoOS)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5);
+      top5TipoChart.data.labels = top5Updated.map(d => d[0]);
+      top5TipoChart.data.datasets[0].data = top5Updated.map(d => Math.round(d[1] * proportion));
+      top5TipoChart.update();
 
-      tipoOSChart.data.labels = tipoLabels;
-      tipoOSChart.data.datasets[0].data = tipoData;
-      tipoOSChart.data.datasets[0].backgroundColor = tipoColors.slice(0, tipoLabels.length);
+      // Update Tipo OS
+      tipoOSChart.data.datasets[0].data = Object.values(summaryData.porTipoOS).map(v => Math.round(v * proportion));
       tipoOSChart.update();
 
-      // Técnico
-      const tecnicoCount = {};
-      filteredData.forEach(d => tecnicoCount[d.tecnico] = (tecnicoCount[d.tecnico] || 0) + 1);
-      const tecnicoSorted = Object.entries(tecnicoCount).sort((a, b) => b[1] - a[1]).slice(0, 10);
-
-      tecnicoChart.data.labels = tecnicoSorted.map(t => t[0]);
-      tecnicoChart.data.datasets[0].data = tecnicoSorted.map(t => t[1]);
+      // Update Técnico
+      const tecData = Object.entries(summaryData.porTecnico).sort((a, b) => b[1] - a[1]).slice(0, 10);
+      tecnicoChart.data.labels = tecData.map(d => d[0]);
+      tecnicoChart.data.datasets[0].data = tecData.map(d => Math.round(d[1] * proportion));
       tecnicoChart.update();
 
-      // Cidade
-      const cidadeCount = {};
-      filteredData.forEach(d => cidadeCount[d.cidade] = (cidadeCount[d.cidade] || 0) + 1);
-
-      cidadeChart.data.labels = Object.keys(cidadeCount);
-      cidadeChart.data.datasets[0].data = Object.values(cidadeCount);
+      // Update Cidade
+      cidadeChart.data.datasets[0].data = Object.values(summaryData.porCidade).map(v => Math.round(v * proportion));
       cidadeChart.update();
 
-      // Motivo
-      const motivoCount = {};
-      filteredData.forEach(d => motivoCount[d.motivo] = (motivoCount[d.motivo] || 0) + 1);
-      const motivoSorted = Object.entries(motivoCount).sort((a, b) => b[1] - a[1]).slice(0, 10);
-
-      motivoChart.data.labels = motivoSorted.map(m => m[0].substring(0, 30) + (m[0].length > 30 ? '...' : ''));
-      motivoChart.data.datasets[0].data = motivoSorted.map(m => m[1]);
+      // Update Motivo
+      const motData = Object.entries(summaryData.topMotivos).slice(0, 10);
+      motivoChart.data.datasets[0].data = motData.map(d => Math.round(d[1] * proportion));
       motivoChart.update();
     }
 
     function updateTable() {
+      const tbody = document.getElementById('tableBody');
       const start = (currentPage - 1) * pageSize;
       const end = start + pageSize;
       const pageData = filteredData.slice(start, end);
 
-      const tbody = document.getElementById('tableBody');
       tbody.innerHTML = pageData.map(d => `
         <tr class="hover:bg-gray-50">
-          <td class="px-4 py-3 text-sm text-gray-900 font-mono">${d.numero_os.substring(0, 10)}...</td>
-          <td class="px-4 py-3 text-sm text-gray-900">${d.cliente.substring(0, 25)}${d.cliente.length > 25 ? '...' : ''}</td>
-          <td class="px-4 py-3 text-sm">
-            <span class="px-2 py-1 rounded-full text-xs font-medium ${getTipoColor(d.tipo_os)}">${d.tipo_os}</span>
+          <td class="px-4 py-3 text-sm font-mono text-gray-900">${d.numero_os.slice(-8)}</td>
+          <td class="px-4 py-3 text-sm text-gray-900">${d.cliente}</td>
+          <td class="px-4 py-3">
+            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getTipoColor(d.tipo_os)}">${d.tipo_os}</span>
           </td>
-          <td class="px-4 py-3 text-sm text-gray-900">${d.tecnico}</td>
-          <td class="px-4 py-3 text-sm text-gray-900">${d.cidade}</td>
-          <td class="px-4 py-3 text-sm text-gray-500">${d.motivo.substring(0, 25)}${d.motivo.length > 25 ? '...' : ''}</td>
-          <td class="px-4 py-3 text-sm text-gray-500">${d.data_cadastro.split(' ')[0]}</td>
+          <td class="px-4 py-3 text-sm text-gray-700">${d.tecnico}</td>
+          <td class="px-4 py-3 text-sm text-gray-700">${d.cidade}</td>
+          <td class="px-4 py-3 text-sm text-gray-600" title="${d.motivo}">${d.motivo.substring(0, 25)}${d.motivo.length > 25 ? '...' : ''}</td>
+          <td class="px-4 py-3 text-sm text-gray-500">${d.data_cadastro}</td>
         </tr>
       `).join('');
 
+      // Update pagination
       const totalPages = Math.ceil(filteredData.length / pageSize);
       document.getElementById('pageInfo').textContent = `Página ${currentPage} de ${totalPages || 1}`;
-      document.getElementById('tableCount').textContent = `${filteredData.length} registros`;
       document.getElementById('prevBtn').disabled = currentPage === 1;
       document.getElementById('nextBtn').disabled = currentPage >= totalPages;
+      document.getElementById('tableCount').textContent = `${filteredData.length} registros`;
     }
 
     function getTipoColor(tipo) {
       const colors = {
         'DIAGNOSTICAR E REPARAR': 'bg-orange-100 text-orange-800',
         'ANALISAR E OTIMIZAR': 'bg-yellow-100 text-yellow-800',
-        'TROCA DE EQUIPAMENTOS': 'bg-purple-100 text-purple-800',
-        'MUDANÇA INTERNA': 'bg-pink-100 text-pink-800',
+        'TROCA DE EQUIPAMENTOS': 'bg-amber-100 text-amber-800',
+        'MUDANÇA INTERNA': 'bg-orange-50 text-orange-700',
         'INSTALAÇÃO INTERNET': 'bg-green-100 text-green-800',
-        'INSTALAÇÃO MUDANÇA INTERNET': 'bg-teal-100 text-teal-800',
-        'INSTALAÇÃO PONTO ADICIONAL': 'bg-emerald-100 text-emerald-800',
+        'INSTALAÇÃO MUDANÇA INTERNET': 'bg-emerald-100 text-emerald-800',
+        'INSTALAÇÃO PONTO ADICIONAL': 'bg-teal-100 text-teal-800',
+        'INSTALAÇÃO EM EVENTO': 'bg-cyan-100 text-cyan-800',
         'DESINSTALAÇÃO': 'bg-red-100 text-red-800',
-        'RETIRADA': 'bg-red-100 text-red-800'
+        'RETIRADA': 'bg-rose-100 text-rose-800'
       };
       return colors[tipo] || 'bg-gray-100 text-gray-800';
     }
