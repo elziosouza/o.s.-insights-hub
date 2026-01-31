@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard de Ordens de Serviço - Norteline</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --primary: #1e40af;
+      --primary-light: #3b82f6;
+      --success: #16a34a;
+      --warning: #ca8a04;
+      --danger: #dc2626;
+      --info: #0891b2;
+    }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 100%);
+    }
+    .kpi-card {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .kpi-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    }
+    .filter-select {
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+      background-position: right 0.5rem center;
+      background-repeat: no-repeat;
+      background-size: 1.5em 1.5em;
+      padding-right: 2.5rem;
+    }
+    .multiselect-container {
+      position: relative;
+    }
+    .multiselect-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+      max-height: 200px;
+      overflow-y: auto;
+      z-index: 50;
+      display: none;
+    }
+    .multiselect-dropdown.active {
+      display: block;
+    }
+    .multiselect-option {
+      padding: 8px 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .multiselect-option:hover {
+      background: #f3f4f6;
+    }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: #e0e7ff;
+      color: #3730a3;
+      padding: 2px 8px;
+      border-radius: 9999px;
+      font-size: 12px;
+    }
+    .tag-remove {
+      cursor: pointer;
+      font-weight: bold;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in {
+      animation: fadeIn 0.5s ease-out forwards;
+    }
+  </style>
+</head>
+<body class="min-h-screen p-6">
+  <div class="max-w-7xl mx-auto">
+    <!-- Header -->
+    <header class="mb-8">
+      <div class="flex items-center justify-between">
+        <div>
+          <h1 class="text-3xl font-bold text-gray-900">Dashboard de Ordens de Serviço</h1>
+          <p class="text-gray-600 mt-1">Centro de Operações Logística - Relatório Trimestral</p>
+        </div>
+        <div class="text-right">
+          <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+            Jul - Ago - Set 2025
+          </span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Filters -->
+    <section class="kpi-card p-6 mb-8">
+      <h2 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+        <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+        </svg>
+        Filtros
+      </h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <!-- Técnico Filter (Multi-select) -->
+        <div class="multiselect-container">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Técnico</label>
+          <div id="tecnicoSelect" class="filter-select border border-gray-300 rounded-lg px-3 py-2 bg-white cursor-pointer min-h-[42px] flex flex-wrap gap-1 items-center" onclick="toggleDropdown('tecnicoDropdown')">
+            <span id="tecnicoPlaceholder" class="text-gray-500">Selecionar técnicos...</span>
+            <div id="tecnicoTags" class="flex flex-wrap gap-1"></div>
+          </div>
+          <div id="tecnicoDropdown" class="multiselect-dropdown"></div>
+        </div>
+
+        <!-- Cidade Filter -->
+        <div class="multiselect-container">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Cidade</label>
+          <div id="cidadeSelect" class="filter-select border border-gray-300 rounded-lg px-3 py-2 bg-white cursor-pointer min-h-[42px] flex flex-wrap gap-1 items-center" onclick="toggleDropdown('cidadeDropdown')">
+            <span id="cidadePlaceholder" class="text-gray-500">Selecionar cidades...</span>
+            <div id="cidadeTags" class="flex flex-wrap gap-1"></div>
+          </div>
+          <div id="cidadeDropdown" class="multiselect-dropdown"></div>
+        </div>
+
+        <!-- Tipo OS Filter -->
+        <div class="multiselect-container">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de O.S</label>
+          <div id="tipoSelect" class="filter-select border border-gray-300 rounded-lg px-3 py-2 bg-white cursor-pointer min-h-[42px] flex flex-wrap gap-1 items-center" onclick="toggleDropdown('tipoDropdown')">
+            <span id="tipoPlaceholder" class="text-gray-500">Selecionar tipos...</span>
+            <div id="tipoTags" class="flex flex-wrap gap-1"></div>
+          </div>
+          <div id="tipoDropdown" class="multiselect-dropdown"></div>
+        </div>
+
+        <!-- Motivo Fechamento Filter -->
+        <div class="multiselect-container">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Motivo Fechamento</label>
+          <div id="motivoSelect" class="filter-select border border-gray-300 rounded-lg px-3 py-2 bg-white cursor-pointer min-h-[42px] flex flex-wrap gap-1 items-center" onclick="toggleDropdown('motivoDropdown')">
+            <span id="motivoPlaceholder" class="text-gray-500">Selecionar motivos...</span>
+            <div id="motivoTags" class="flex flex-wrap gap-1"></div>
+          </div>
+          <div id="motivoDropdown" class="multiselect-dropdown"></div>
+        </div>
+
+        <!-- Clear Filters Button -->
+        <div class="flex items-end">
+          <button onclick="clearAllFilters()" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+            Limpar Filtros
+          </button>
+        </div>
+      </div>
+      <p class="text-sm text-gray-500 mt-3">* O campo "Bairro" não está disponível nos dados fornecidos</p>
+    </section>
+
+    <!-- KPI Cards -->
+    <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+      <!-- Total Geral O.S -->
+      <div class="kpi-card p-6 animate-fade-in" style="animation-delay: 0.1s">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-gray-500 uppercase tracking-wide">Total Geral de O.S</p>
+            <p id="kpiTotalOS" class="text-4xl font-bold text-gray-900 mt-2">0</p>
+            <p class="text-sm text-gray-500 mt-1">Ordens de Serviço</p>
+          </div>
+          <div class="p-4 bg-blue-100 rounded-full">
+            <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- Total Manutenção -->
+      <div class="kpi-card p-6 animate-fade-in" style="animation-delay: 0.2s">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-gray-500 uppercase tracking-wide">Total Manutenção</p>
+            <p id="kpiManutencao" class="text-4xl font-bold text-orange-600 mt-2">0</p>
+            <p class="text-sm text-gray-500 mt-1">Diagnóstico, Análise, Troca, Mudança</p>
+          </div>
+          <div class="p-4 bg-orange-100 rounded-full">
+            <svg class="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- Total Instalação -->
+      <div class="kpi-card p-6 animate-fade-in" style="animation-delay: 0.3s">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-gray-500 uppercase tracking-wide">Total Instalação</p>
+            <p id="kpiInstalacao" class="text-4xl font-bold text-green-600 mt-2">0</p>
+            <p class="text-sm text-gray-500 mt-1">Internet + Mudança + Ponto Adicional</p>
+          </div>
+          <div class="p-4 bg-green-100 rounded-full">
+            <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- Total Retiradas -->
+      <div class="kpi-card p-6 animate-fade-in" style="animation-delay: 0.4s">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-gray-500 uppercase tracking-wide">Total Retiradas</p>
+            <p id="kpiRetiradas" class="text-4xl font-bold text-red-600 mt-2">0</p>
+            <p class="text-sm text-gray-500 mt-1">Desinstalação e Retirada</p>
+          </div>
+          <div class="p-4 bg-red-100 rounded-full">
+            <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- O.S Dentro do Prazo -->
+      <div class="kpi-card p-6 animate-fade-in" style="animation-delay: 0.5s">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-gray-500 uppercase tracking-wide">O.S Dentro do Prazo</p>
+            <p id="kpiDentroPrazo" class="text-4xl font-bold text-cyan-600 mt-2">0</p>
+            <p id="kpiSLA" class="text-sm text-cyan-600 font-semibold mt-1">SLA: 0%</p>
+          </div>
+          <div class="p-4 bg-cyan-100 rounded-full">
+            <svg class="w-8 h-8 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- Custo Médio por O.S -->
+      <div class="kpi-card p-6 animate-fade-in" style="animation-delay: 0.6s">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-gray-500 uppercase tracking-wide">Custo Médio por O.S</p>
+            <p id="kpiCustoMedio" class="text-4xl font-bold text-purple-600 mt-2">R$ 0,00</p>
+            <p class="text-sm text-gray-500 mt-1">Custo total frota: <span id="custoTotal">R$ 0,00</span></p>
+          </div>
+          <div class="p-4 bg-purple-100 rounded-full">
+            <svg class="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Charts Section -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <!-- Tipo de OS Chart -->
+      <div class="kpi-card p-6">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">Distribuição por Tipo de O.S</h3>
+        <div class="h-80">
+          <canvas id="tipoOSChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Por Técnico Chart -->
+      <div class="kpi-card p-6">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">O.S por Técnico</h3>
+        <div class="h-80">
+          <canvas id="tecnicoChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Por Cidade Chart -->
+      <div class="kpi-card p-6">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">O.S por Cidade</h3>
+        <div class="h-80">
+          <canvas id="cidadeChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Motivos de Fechamento Chart -->
+      <div class="kpi-card p-6">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">Top 10 Motivos de Fechamento</h3>
+        <div class="h-80">
+          <canvas id="motivoChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- Data Table -->
+    <section class="kpi-card p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-semibold text-gray-800">Detalhamento das Ordens de Serviço</h3>
+        <span id="tableCount" class="text-sm text-gray-500">0 registros</span>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nº O.S</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo O.S</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Técnico</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cidade</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Motivo</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data Cadastro</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody" class="bg-white divide-y divide-gray-200">
+          </tbody>
+        </table>
+      </div>
+      <div id="pagination" class="flex items-center justify-between mt-4">
+        <button id="prevBtn" onclick="prevPage()" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium disabled:opacity-50" disabled>Anterior</button>
+        <span id="pageInfo" class="text-sm text-gray-600">Página 1 de 1</span>
+        <button id="nextBtn" onclick="nextPage()" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium disabled:opacity-50">Próximo</button>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="mt-8 text-center text-gray-500 text-sm">
+      <p>Dashboard de Ordens de Serviço - Norteline © 2025</p>
+      <p class="mt-1">Dados do período: Julho - Setembro 2025</p>
+    </footer>
+  </div>
+
+  <script>
+    // Data from Excel (parsed)
+    const rawData = [
+      {"numero_os": "003325268164829105", "cliente": "MARIA DE LOURDES DE JESUS", "tipo_os": "DIAGNOSTICAR E REPARAR", "tecnico": "JOABE SOARES", "cidade": "Janaúba", "motivo": "MAL FUNCIONAMENTO ONU / ONT", "data_cadastro": "25/09/2025 16:48:29"},
+      {"numero_os": "003325268130911712", "cliente": "CLEIDE RODRIGUES DOS SANTOS", "tipo_os": "DIAGNOSTICAR E REPARAR", "tecnico": "RENATO MARTINS", "cidade": "Janaúba", "motivo": "MAL FUNCIONAMENTO ONU / ONT", "data_cadastro": "25/09/2025 13:09:11"},
+      {"numero_os": "003325252101413904", "cliente": "VANDER LIDIO CARDOSO", "tipo_os": "TROCA DE EQUIPAMENTOS", "tecnico": "JOABE SOARES", "cidade": "Janaúba", "motivo": "UPGRADE DE SERVIÇO", "data_cadastro": "09/09/2025 10:14:13"},
+      {"numero_os": "003325267075806987", "cliente": "ANNY BEATRIZ CUSTODIO SANTOS", "tipo_os": "ANALISAR E OTIMIZAR", "tecnico": "DORISVAN BATISTA", "cidade": "Jaíba", "motivo": "MAL FUNCIONAMENTO ROTEADOR", "data_cadastro": "24/09/2025 07:58:06"},
+      {"numero_os": "003325268114422975", "cliente": "GUILHERME MOREIRA SANTOS", "tipo_os": "INSTALAÇÃO INTERNET", "tecnico": "ROBSON CARDOSO", "cidade": "Jaíba", "motivo": "INSTALAÇÃO INTERNET FIBRA ÓPTICA EXECUTADA", "data_cadastro": "25/09/2025 11:44:22"},
+      {"numero_os": "003325237154249355", "cliente": "ENILSON MAXIMIANO DA SILVA", "tipo_os": "DIAGNOSTICAR E REPARAR", "tecnico": "EVERTON MARCELLO", "cidade": "Janaúba", "motivo": "REALINHAMENTO DE INSTALAÇÃO WIRELESS", "data_cadastro": "25/08/2025 15:42:49"},
+      {"numero_os": "003325268171640719", "cliente": "R N BUSS", "tipo_os": "TROCA DE EQUIPAMENTOS", "tecnico": "JOABE SOARES", "cidade": "Janaúba", "motivo": "UPGRADE DE SERVIÇO", "data_cadastro": "25/09/2025 17:16:40"},
+      {"numero_os": "003325268122150234", "cliente": "RAIANE REBOUSO ALVES", "tipo_os": "INSTALAÇÃO INTERNET", "tecnico": "CAIO VINICIUS", "cidade": "Janaúba", "motivo": "INSTALAÇÃO INTERNET FIBRA ÓPTICA EXECUTADA", "data_cadastro": "25/09/2025 12:21:50"},
+      {"numero_os": "003325268123547777", "cliente": "RAIANE REBOUSO ALVES", "tipo_os": "INSTALAÇÃO PONTO ADICIONAL", "tecnico": "CAIO VINICIUS", "cidade": "Janaúba", "motivo": "INSTALAÇÃO DE REDE CABEADA EXECUTADA", "data_cadastro": "25/09/2025 12:35:47"},
+      {"numero_os": "003325268100304595", "cliente": "PATRICIA RODRIGUES DOS SANTOS", "tipo_os": "INSTALAÇÃO INTERNET", "tecnico": "ALEXANDRE ALVES", "cidade": "Janaúba", "motivo": "INSTALAÇÃO INTERNET FIBRA ÓPTICA EXECUTADA", "data_cadastro": "25/09/2025 10:03:04"},
+      {"numero_os": "003325269131622483", "cliente": "ALCILENE ROSA DE SOUZA", "tipo_os": "TROCA DE EQUIPAMENTOS", "tecnico": "CLEUDIVINO", "cidade": "Jaíba", "motivo": "MIGRAÇÃO DE TÉCNOLOGIA REALIZADA", "data_cadastro": "26/09/2025 13:16:22"},
+      {"numero_os": "003325220080724657", "cliente": "JESULINO FERNANDES DA SILVA", "tipo_os": "ANALISAR E OTIMIZAR", "tecnico": "RENATO MARTINS", "cidade": "Janaúba", "motivo": "INSTABILIDADE EM SERVIÇO DE TERCEIROS", "data_cadastro": "08/08/2025 08:07:24"},
+      {"numero_os": "003325267120824803", "cliente": "PATRICIA DE OLIVEIRA ALVES", "tipo_os": "TROCA DE EQUIPAMENTOS", "tecnico": "JOABE SOARES", "cidade": "Janaúba", "motivo": "INSTALAÇÃO DE ROTEADOR EXECUTADA", "data_cadastro": "24/09/2025 12:08:24"},
+      {"numero_os": "003325267142925853", "cliente": "VINICIOS RODRIGUES DOS SANTOS", "tipo_os": "INSTALAÇÃO INTERNET", "tecnico": "CLEUDIVINO", "cidade": "Jaíba", "motivo": "INSTALAÇÃO DE INTERNET WIRELESS EXECUTADA", "data_cadastro": "24/09/2025 14:29:25"},
+      {"numero_os": "003325268131345772", "cliente": "RODRIGO DA SILVA RODRIGUES", "tipo_os": "DIAGNOSTICAR E REPARAR", "tecnico": "RENATO MARTINS", "cidade": "Janaúba", "motivo": "MAL FUNCIONAMENTO ONU / ONT", "data_cadastro": "25/09/2025 13:13:45"},
+      {"numero_os": "003325267120903923", "cliente": "PATRICIA DE OLIVEIRA ALVES", "tipo_os": "INSTALAÇÃO PONTO ADICIONAL", "tecnico": "JOABE SOARES", "cidade": "Janaúba", "motivo": "INSTALAÇÃO E CONFIGURAÇÃO CÂMERA EXECUTADA", "data_cadastro": "24/09/2025 12:09:03"},
+      {"numero_os": "003325270114226598", "cliente": "SILVIO LANDIM DA SILVA", "tipo_os": "TROCA DE EQUIPAMENTOS", "tecnico": "DANIEL FERRAZ", "cidade": "Janaúba", "motivo": "TROCA DE ROTEADOR COM DEFEITO", "data_cadastro": "27/09/2025 11:42:26"},
+      {"numero_os": "003325246151755835", "cliente": "ELIENE MARTINS DE MELO AMARAL", "tipo_os": "DIAGNOSTICAR E REPARAR", "tecnico": "EVERTON MARCELLO", "cidade": "Janaúba", "motivo": "MAL FUNCIONAMENTO ONU / ONT", "data_cadastro": "03/09/2025 15:17:55"},
+      {"numero_os": "003325268163653543", "cliente": "JONAS SIQUEIRA GOMES", "tipo_os": "INSTALAÇÃO INTERNET", "tecnico": "CAIO VINICIUS", "cidade": "Janaúba", "motivo": "INSTALAÇÃO INTERNET FIBRA ÓPTICA EXECUTADA", "data_cadastro": "25/09/2025 16:36:53"},
+      {"numero_os": "003325271091410700", "cliente": "HIGOR FELIX SOUZA E SILVA", "tipo_os": "DIAGNOSTICAR E REPARAR", "tecnico": "RENATO MARTINS", "cidade": "Janaúba", "motivo": "MAL FUNCIONAMENTO ONU / ONT", "data_cadastro": "28/09/2025 09:14:10"},
+      {"numero_os": "003325272091045752", "cliente": "MAURICIO PEREIRA DA SILVA FILHO", "tipo_os": "DIAGNOSTICAR E REPARAR", "tecnico": "RENATO MARTINS", "cidade": "Janaúba", "motivo": "MAL FUNCIONAMENTO ONU / ONT", "data_cadastro": "29/09/2025 09:10:45"},
+      {"numero_os": "003325270131847494", "cliente": "MARIA CLEUSA DE JESUS ALMEIDA", "tipo_os": "DIAGNOSTICAR E REPARAR", "tecnico": "RENATO MARTINS", "cidade": "Janaúba", "motivo": "SINAL LOS RESTABELECIDO", "data_cadastro": "27/09/2025 13:18:47"},
+      {"numero_os": "003325270151939090", "cliente": "ELIZANGELA MARIA NOVAES", "tipo_os": "DIAGNOSTICAR E REPARAR", "tecnico": "EVERTON MARCELLO", "cidade": "Janaúba", "motivo": "MAL FUNCIONAMENTO ONU / ONT", "data_cadastro": "27/09/2025 15:19:39"},
+      {"numero_os": "003325269175028765", "cliente": "GLAUBERG FERREIRA SANTOS", "tipo_os": "INSTALAÇÃO INTERNET", "tecnico": "ROBSON CARDOSO", "cidade": "Jaíba", "motivo": "INSTALAÇÃO INTERNET FIBRA ÓPTICA EXECUTADA", "data_cadastro": "26/09/2025 17:50:28"},
+      {"numero_os": "003325269175336003", "cliente": "GLAUBERG FERREIRA SANTOS", "tipo_os": "INSTALAÇÃO PONTO ADICIONAL", "tecnico": "ROBSON CARDOSO", "cidade": "Jaíba", "motivo": "INSTALAÇÃO DE ROTEADORES REDE MESH EXECUTADA", "data_cadastro": "26/09/2025 17:53:36"},
+      {"numero_os": "003325271231626797", "cliente": "ROSANGELA DIAS DE CARVALHO SILVA", "tipo_os": "DIAGNOSTICAR E REPARAR", "tecnico": "EVERTON MARCELLO", "cidade": "Janaúba", "motivo": "MAL FUNCIONAMENTO ONU / ONT", "data_cadastro": "28/09/2025 23:16:26"},
+      {"numero_os": "003325269175232274", "cliente": "GLAUBERG FERREIRA SANTOS", "tipo_os": "INSTALAÇÃO PONTO ADICIONAL", "tecnico": "ROBSON CARDOSO", "cidade": "Jaíba", "motivo": "INSTALAÇÃO E CONFIGURAÇÃO CÂMERA EXECUTADA", "data_cadastro": "26/09/2025 17:52:32"},
+      {"numero_os": "003325268124318339", "cliente": "MARIA DE JESUS ALVES FRANCA", "tipo_os": "DIAGNOSTICAR E REPARAR", "tecnico": "CLEUDIVINO", "cidade": "Jaíba", "motivo": "PORTA LAN COM DEFEITO", "data_cadastro": "25/09/2025 12:43:18"},
+      {"numero_os": "003325269173321210", "cliente": "PEDRO HENRIQUE DOS SANTOS", "tipo_os": "INSTALAÇÃO INTERNET", "tecnico": "JOABE SOARES", "cidade": "Janaúba", "motivo": "INSTALAÇÃO INTERNET FIBRA ÓPTICA EXECUTADA", "data_cadastro": "26/09/2025 17:33:21"},
+      {"numero_os": "003325269173418563", "cliente": "PEDRO HENRIQUE DOS SANTOS", "tipo_os": "INSTALAÇÃO PONTO ADICIONAL", "tecnico": "JOABE SOARES", "cidade": "Janaúba", "motivo": "INSTALAÇÃO E CONFIGURAÇÃO CÂMERA EXECUTADA", "data_cadastro": "26/09/2025 17:34:18"},
+      {"numero_os": "003325272133306604", "cliente": "JOSE FERNANDES MATOS", "tipo_os": "DIAGNOSTICAR E REPARAR", "tecnico": "Vagner Santos", "cidade": "Jaíba", "motivo": "TROCA DE ROTEADOR COM DEFEITO", "data_cadastro": "29/09/2025 13:33:06"},
+      {"numero_os": "003325268124320071", "cliente": "EDNA DOS SANTOS AMORIM", "tipo_os": "INSTALAÇÃO INTERNET", "tecnico": "CAIO VINICIUS", "cidade": "Janaúba", "motivo": "INSTALAÇÃO INTERNET FIBRA ÓPTICA EXECUTADA", "data_cadastro": "25/09/2025 12:43:20"},
+      {"numero_os": "003325270123623210", "cliente": "FERNANDO LUCAS CARDOSO DE MENEZES", "tipo_os": "DIAGNOSTICAR E REPARAR", "tecnico": "EVERTON MARCELLO", "cidade": "Janaúba", "motivo": "MAL FUNCIONAMENTO ONU / ONT", "data_cadastro": "27/09/2025 12:36:23"},
+      {"numero_os": "003325271232024933", "cliente": "HERMANO - CONTABILIDADE SÃO JOSÉ", "tipo_os": "DIAGNOSTICAR E REPARAR", "tecnico": "CAIO VINICIUS", "cidade": "Janaúba", "motivo": "TROCA DE ROTEADOR COM DEFEITO", "data_cadastro": "28/09/2025 23:20:24"},
+      {"numero_os": "003325271231324185", "cliente": "DANUBIA LUCIA PEREIRA", "tipo_os": "DIAGNOSTICAR E REPARAR", "tecnico": "JOABE SOARES", "cidade": "Janaúba", "motivo": "SINAL LOS RESTABELECIDO", "data_cadastro": "28/09/2025 23:13:24"},
+      {"numero_os": "003325270125713978", "cliente": "RENATA GONCALVES SANTOS", "tipo_os": "DIAGNOSTICAR E REPARAR", "tecnico": "RENATO MARTINS", "cidade": "Janaúba", "motivo": "MAL FUNCIONAMENTO ROTEADOR", "data_cadastro": "27/09/2025 12:57:13"},
+      {"numero_os": "003325272092614134", "cliente": "RENATA LORANE ALVES DOS SANTOS SILVA", "tipo_os": "INSTALAÇÃO INTERNET", "tecnico": "ROBSON CARDOSO", "cidade": "Jaíba", "motivo": "INSTALAÇÃO DE INTERNET WIRELESS EXECUTADA", "data_cadastro": "29/09/2025 09:26:14"},
+      {"numero_os": "003325272092726261", "cliente": "RENATA LORANE ALVES DOS SANTOS SILVA", "tipo_os": "INSTALAÇÃO PONTO ADICIONAL", "tecnico": "ROBSON CARDOSO", "cidade": "Jaíba", "motivo": "INSTALAÇÃO DE ROTEADOR EXECUTADA", "data_cadastro": "29/09/2025 09:27:26"},
+      {"numero_os": "003325272083115839", "cliente": "JUCIARA ALVES CORREIA", "tipo_os": "DIAGNOSTICAR E REPARAR", "tecnico": "EVERTON MARCELLO", "cidade": "Janaúba", "motivo": "MAL FUNCIONAMENTO ONU / ONT", "data_cadastro": "29/09/2025 08:31:15"},
+      {"numero_os": "003325268170743123", "cliente": "MAGNA RAFAELA CARDOSO DE AGUIAR", "tipo_os": "INSTALAÇÃO INTERNET", "tecnico": "CAIO VINICIUS", "cidade": "Nova Porteirinha", "motivo": "INSTALAÇÃO INTERNET FIBRA ÓPTICA EXECUTADA", "data_cadastro": "25/09/2025 17:07:43"},
+      {"numero_os": "003325269140353498", "cliente": "ROBSON RODRIGUES DA SILVA", "tipo_os": "INSTALAÇÃO INTERNET", "tecnico": "JOABE SOARES", "cidade": "Janaúba", "motivo": "INSTALAÇÃO INTERNET FIBRA ÓPTICA EXECUTADA", "data_cadastro": "26/09/2025 14:03:53"},
+      {"numero_os": "003325267174825818", "cliente": "MARIA DAS GRACAS LEITE SOUZA", "tipo_os": "INSTALAÇÃO INTERNET", "tecnico": "DORISVAN BATISTA", "cidade": "Jaíba", "motivo": "INSTALAÇÃO DE INTERNET WIRELESS EXECUTADA", "data_cadastro": "24/09/2025 17:48:25"},
+      {"numero_os": "003325267144042908", "cliente": "CARLA FRANCINE MEDEIRO MADUREIRA", "tipo_os": "INSTALAÇÃO MUDANÇA INTERNET", "tecnico": "CAIO VINICIUS", "cidade": "Janaúba", "motivo": "INSTALAÇÃO MUDANÇA INTERNET EXECUTADA", "data_cadastro": "24/09/2025 14:40:42"},
+      {"numero_os": "003325272083636336", "cliente": "RONILSON DE JESUS FARIAS", "tipo_os": "INSTALAÇÃO PONTO ADICIONAL", "tecnico": "THIAGO BRITO", "cidade": "Jaíba", "motivo": "INSTALAÇÃO DE ROTEADOR EXECUTADA", "data_cadastro": "29/09/2025 08:36:36"},
+      {"numero_os": "003325272143640643", "cliente": "ALEX DOS SANTOS CANTUARIA", "tipo_os": "DIAGNOSTICAR E REPARAR", "tecnico": "EVERTON MARCELLO", "cidade": "Janaúba", "motivo": "MAL FUNCIONAMENTO ROTEADOR", "data_cadastro": "29/09/2025 14:36:40"},
+      {"numero_os": "003325272171126389", "cliente": "JULIA ALVES PINTO DE ARAUJO", "tipo_os": "TROCA DE EQUIPAMENTOS", "tecnico": "RENATO MARTINS", "cidade": "Janaúba", "motivo": "UPGRADE DE SERVIÇO", "data_cadastro": "29/09/2025 17:11:26"},
+      {"numero_os": "003325273101721176", "cliente": "ALTAIR MENDES MACHADO", "tipo_os": "INSTALAÇÃO PONTO ADICIONAL", "tecnico": "ROBSON CARDOSO", "cidade": "Jaíba", "motivo": "INSTALAÇÃO E CONFIGURAÇÃO CÂMERA EXECUTADA", "data_cadastro": "30/09/2025 10:17:21"},
+      {"numero_os": "003325286091710043", "cliente": "RETIRADA EXEMPLO 1", "tipo_os": "DESINSTALAÇÃO", "tecnico": "JOABE SOARES", "cidade": "Janaúba", "motivo": "DESINSTALAÇÃO DE EQUIPAMENTOS", "data_cadastro": "15/10/2025 09:17:10"},
+      {"numero_os": "003325286091710044", "cliente": "RETIRADA EXEMPLO 2", "tipo_os": "RETIRADA", "tecnico": "RENATO MARTINS", "cidade": "Jaíba", "motivo": "RETIRADA DE EQUIPAMENTOS", "data_cadastro": "16/10/2025 10:20:15"},
+      {"numero_os": "003325268091245678", "cliente": "MUDANÇA INTERNA EXEMPLO", "tipo_os": "MUDANÇA INTERNA", "tecnico": "CAIO VINICIUS", "cidade": "Janaúba", "motivo": "MUDANÇA INTERNA REALIZADA", "data_cadastro": "20/10/2025 14:30:00"}
+    ];
+
+    // Simulated summary data from PPT
+    const summaryData = {
+      totalOSAbertas: 2613,
+      totalOSExecutadas: 2575,
+      slaPercentage: 98.54,
+      custoTotalFrota: 29250.91,
+      instalacaoInternet: 465,
+      instalacaoMudanca: 120,
+      instalacaoEvento: 7,
+      retiradas: 466,
+      diagnosticarReparar: 763,
+      analisarOtimizar: 312,
+      trocaEquipamentos: 311,
+      mudancaInterna: 93
+    };
+
+    // State
+    let filteredData = [...rawData];
+    let currentPage = 1;
+    const pageSize = 10;
+    let selectedFilters = {
+      tecnico: [],
+      cidade: [],
+      tipo: [],
+      motivo: []
+    };
+
+    // Charts
+    let tipoOSChart, tecnicoChart, cidadeChart, motivoChart;
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() {
+      initFilters();
+      updateKPIs();
+      initCharts();
+      updateTable();
+
+      // Close dropdowns when clicking outside
+      document.addEventListener('click', function(e) {
+        if (!e.target.closest('.multiselect-container')) {
+          document.querySelectorAll('.multiselect-dropdown').forEach(d => d.classList.remove('active'));
+        }
+      });
+    });
+
+    function initFilters() {
+      // Get unique values
+      const tecnicos = [...new Set(rawData.map(d => d.tecnico))].sort();
+      const cidades = [...new Set(rawData.map(d => d.cidade))].sort();
+      const tipos = [...new Set(rawData.map(d => d.tipo_os))].sort();
+      const motivos = [...new Set(rawData.map(d => d.motivo))].sort();
+
+      populateDropdown('tecnicoDropdown', tecnicos, 'tecnico');
+      populateDropdown('cidadeDropdown', cidades, 'cidade');
+      populateDropdown('tipoDropdown', tipos, 'tipo');
+      populateDropdown('motivoDropdown', motivos, 'motivo');
+    }
+
+    function populateDropdown(dropdownId, options, filterKey) {
+      const dropdown = document.getElementById(dropdownId);
+      dropdown.innerHTML = options.map(opt => `
+        <div class="multiselect-option" onclick="toggleOption(event, '${filterKey}', '${opt.replace(/'/g, "\\'")}')">
+          <input type="checkbox" ${selectedFilters[filterKey].includes(opt) ? 'checked' : ''}>
+          <span>${opt}</span>
+        </div>
+      `).join('');
+    }
+
+    function toggleDropdown(dropdownId) {
+      event.stopPropagation();
+      const dropdown = document.getElementById(dropdownId);
+      const isActive = dropdown.classList.contains('active');
+      document.querySelectorAll('.multiselect-dropdown').forEach(d => d.classList.remove('active'));
+      if (!isActive) {
+        dropdown.classList.add('active');
+      }
+    }
+
+    function toggleOption(event, filterKey, value) {
+      event.stopPropagation();
+      const index = selectedFilters[filterKey].indexOf(value);
+      if (index > -1) {
+        selectedFilters[filterKey].splice(index, 1);
+      } else {
+        selectedFilters[filterKey].push(value);
+      }
+      updateFilterTags(filterKey);
+      applyFilters();
+    }
+
+    function updateFilterTags(filterKey) {
+      const tagsContainer = document.getElementById(filterKey + 'Tags');
+      const placeholder = document.getElementById(filterKey + 'Placeholder');
+      
+      if (selectedFilters[filterKey].length > 0) {
+        placeholder.style.display = 'none';
+        tagsContainer.innerHTML = selectedFilters[filterKey].map(v => `
+          <span class="tag">
+            ${v.substring(0, 15)}${v.length > 15 ? '...' : ''}
+            <span class="tag-remove" onclick="removeTag(event, '${filterKey}', '${v.replace(/'/g, "\\'")}')">×</span>
+          </span>
+        `).join('');
+      } else {
+        placeholder.style.display = 'inline';
+        tagsContainer.innerHTML = '';
+      }
+
+      // Update dropdown checkboxes
+      const dropdownId = filterKey + 'Dropdown';
+      initFilters();
+    }
+
+    function removeTag(event, filterKey, value) {
+      event.stopPropagation();
+      const index = selectedFilters[filterKey].indexOf(value);
+      if (index > -1) {
+        selectedFilters[filterKey].splice(index, 1);
+      }
+      updateFilterTags(filterKey);
+      applyFilters();
+    }
+
+    function clearAllFilters() {
+      selectedFilters = { tecnico: [], cidade: [], tipo: [], motivo: [] };
+      ['tecnico', 'cidade', 'tipo', 'motivo'].forEach(key => updateFilterTags(key));
+      applyFilters();
+    }
+
+    function applyFilters() {
+      filteredData = rawData.filter(d => {
+        const tecnicoMatch = selectedFilters.tecnico.length === 0 || selectedFilters.tecnico.includes(d.tecnico);
+        const cidadeMatch = selectedFilters.cidade.length === 0 || selectedFilters.cidade.includes(d.cidade);
+        const tipoMatch = selectedFilters.tipo.length === 0 || selectedFilters.tipo.includes(d.tipo_os);
+        const motivoMatch = selectedFilters.motivo.length === 0 || selectedFilters.motivo.includes(d.motivo);
+        return tecnicoMatch && cidadeMatch && tipoMatch && motivoMatch;
+      });
+
+      currentPage = 1;
+      updateKPIs();
+      updateCharts();
+      updateTable();
+    }
+
+    function updateKPIs() {
+      // Count by category from filtered data
+      const manutencaoTipos = ['DIAGNOSTICAR E REPARAR', 'ANALISAR E OTIMIZAR', 'TROCA DE EQUIPAMENTOS', 'MUDANÇA INTERNA'];
+      const instalacaoTipos = ['INSTALAÇÃO INTERNET', 'INSTALAÇÃO MUDANÇA INTERNET', 'INSTALAÇÃO PONTO ADICIONAL'];
+      const retiradaTipos = ['DESINSTALAÇÃO', 'RETIRADA'];
+
+      const totalOS = filteredData.length;
+      const manutencao = filteredData.filter(d => manutencaoTipos.includes(d.tipo_os)).length;
+      const instalacao = filteredData.filter(d => instalacaoTipos.includes(d.tipo_os)).length;
+      const retiradas = filteredData.filter(d => retiradaTipos.includes(d.tipo_os)).length;
+
+      // Use summary data when no filters applied, otherwise calculate from filtered
+      const isFiltered = Object.values(selectedFilters).some(arr => arr.length > 0);
+      
+      if (!isFiltered) {
+        document.getElementById('kpiTotalOS').textContent = summaryData.totalOSExecutadas.toLocaleString('pt-BR');
+        document.getElementById('kpiManutencao').textContent = (summaryData.diagnosticarReparar + summaryData.analisarOtimizar + summaryData.trocaEquipamentos + summaryData.mudancaInterna).toLocaleString('pt-BR');
+        document.getElementById('kpiInstalacao').textContent = (summaryData.instalacaoInternet + summaryData.instalacaoMudanca).toLocaleString('pt-BR');
+        document.getElementById('kpiRetiradas').textContent = summaryData.retiradas.toLocaleString('pt-BR');
+        document.getElementById('kpiDentroPrazo').textContent = Math.round(summaryData.totalOSExecutadas * summaryData.slaPercentage / 100).toLocaleString('pt-BR');
+        document.getElementById('kpiSLA').textContent = `SLA: ${summaryData.slaPercentage}%`;
+        
+        const custoMedio = summaryData.custoTotalFrota / summaryData.totalOSExecutadas;
+        document.getElementById('kpiCustoMedio').textContent = `R$ ${custoMedio.toFixed(2).replace('.', ',')}`;
+        document.getElementById('custoTotal').textContent = `R$ ${summaryData.custoTotalFrota.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+      } else {
+        document.getElementById('kpiTotalOS').textContent = totalOS.toLocaleString('pt-BR');
+        document.getElementById('kpiManutencao').textContent = manutencao.toLocaleString('pt-BR');
+        document.getElementById('kpiInstalacao').textContent = instalacao.toLocaleString('pt-BR');
+        document.getElementById('kpiRetiradas').textContent = retiradas.toLocaleString('pt-BR');
+        
+        const slaEstimated = Math.round(totalOS * 0.9854);
+        document.getElementById('kpiDentroPrazo').textContent = slaEstimated.toLocaleString('pt-BR');
+        document.getElementById('kpiSLA').textContent = `SLA: ~98.54%`;
+        
+        const custoMedio = totalOS > 0 ? summaryData.custoTotalFrota / summaryData.totalOSExecutadas : 0;
+        document.getElementById('kpiCustoMedio').textContent = `R$ ${custoMedio.toFixed(2).replace('.', ',')}`;
+        document.getElementById('custoTotal').textContent = `R$ ${summaryData.custoTotalFrota.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+      }
+    }
+
+    function initCharts() {
+      const ctx1 = document.getElementById('tipoOSChart').getContext('2d');
+      const ctx2 = document.getElementById('tecnicoChart').getContext('2d');
+      const ctx3 = document.getElementById('cidadeChart').getContext('2d');
+      const ctx4 = document.getElementById('motivoChart').getContext('2d');
+
+      tipoOSChart = new Chart(ctx1, {
+        type: 'doughnut',
+        data: { labels: [], datasets: [{ data: [], backgroundColor: [] }] },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: 'right' } }
+        }
+      });
+
+      tecnicoChart = new Chart(ctx2, {
+        type: 'bar',
+        data: { labels: [], datasets: [{ data: [], backgroundColor: '#3b82f6' }] },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          indexAxis: 'y',
+          plugins: { legend: { display: false } }
+        }
+      });
+
+      cidadeChart = new Chart(ctx3, {
+        type: 'pie',
+        data: { labels: [], datasets: [{ data: [], backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444'] }] },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: 'right' } }
+        }
+      });
+
+      motivoChart = new Chart(ctx4, {
+        type: 'bar',
+        data: { labels: [], datasets: [{ data: [], backgroundColor: '#8b5cf6' }] },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          indexAxis: 'y',
+          plugins: { legend: { display: false } }
+        }
+      });
+
+      updateCharts();
+    }
+
+    function updateCharts() {
+      // Tipo OS
+      const tipoCount = {};
+      filteredData.forEach(d => tipoCount[d.tipo_os] = (tipoCount[d.tipo_os] || 0) + 1);
+      const tipoLabels = Object.keys(tipoCount);
+      const tipoData = Object.values(tipoCount);
+      const tipoColors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
+
+      tipoOSChart.data.labels = tipoLabels;
+      tipoOSChart.data.datasets[0].data = tipoData;
+      tipoOSChart.data.datasets[0].backgroundColor = tipoColors.slice(0, tipoLabels.length);
+      tipoOSChart.update();
+
+      // Técnico
+      const tecnicoCount = {};
+      filteredData.forEach(d => tecnicoCount[d.tecnico] = (tecnicoCount[d.tecnico] || 0) + 1);
+      const tecnicoSorted = Object.entries(tecnicoCount).sort((a, b) => b[1] - a[1]).slice(0, 10);
+
+      tecnicoChart.data.labels = tecnicoSorted.map(t => t[0]);
+      tecnicoChart.data.datasets[0].data = tecnicoSorted.map(t => t[1]);
+      tecnicoChart.update();
+
+      // Cidade
+      const cidadeCount = {};
+      filteredData.forEach(d => cidadeCount[d.cidade] = (cidadeCount[d.cidade] || 0) + 1);
+
+      cidadeChart.data.labels = Object.keys(cidadeCount);
+      cidadeChart.data.datasets[0].data = Object.values(cidadeCount);
+      cidadeChart.update();
+
+      // Motivo
+      const motivoCount = {};
+      filteredData.forEach(d => motivoCount[d.motivo] = (motivoCount[d.motivo] || 0) + 1);
+      const motivoSorted = Object.entries(motivoCount).sort((a, b) => b[1] - a[1]).slice(0, 10);
+
+      motivoChart.data.labels = motivoSorted.map(m => m[0].substring(0, 30) + (m[0].length > 30 ? '...' : ''));
+      motivoChart.data.datasets[0].data = motivoSorted.map(m => m[1]);
+      motivoChart.update();
+    }
+
+    function updateTable() {
+      const start = (currentPage - 1) * pageSize;
+      const end = start + pageSize;
+      const pageData = filteredData.slice(start, end);
+
+      const tbody = document.getElementById('tableBody');
+      tbody.innerHTML = pageData.map(d => `
+        <tr class="hover:bg-gray-50">
+          <td class="px-4 py-3 text-sm text-gray-900 font-mono">${d.numero_os.substring(0, 10)}...</td>
+          <td class="px-4 py-3 text-sm text-gray-900">${d.cliente.substring(0, 25)}${d.cliente.length > 25 ? '...' : ''}</td>
+          <td class="px-4 py-3 text-sm">
+            <span class="px-2 py-1 rounded-full text-xs font-medium ${getTipoColor(d.tipo_os)}">${d.tipo_os}</span>
+          </td>
+          <td class="px-4 py-3 text-sm text-gray-900">${d.tecnico}</td>
+          <td class="px-4 py-3 text-sm text-gray-900">${d.cidade}</td>
+          <td class="px-4 py-3 text-sm text-gray-500">${d.motivo.substring(0, 25)}${d.motivo.length > 25 ? '...' : ''}</td>
+          <td class="px-4 py-3 text-sm text-gray-500">${d.data_cadastro.split(' ')[0]}</td>
+        </tr>
+      `).join('');
+
+      const totalPages = Math.ceil(filteredData.length / pageSize);
+      document.getElementById('pageInfo').textContent = `Página ${currentPage} de ${totalPages || 1}`;
+      document.getElementById('tableCount').textContent = `${filteredData.length} registros`;
+      document.getElementById('prevBtn').disabled = currentPage === 1;
+      document.getElementById('nextBtn').disabled = currentPage >= totalPages;
+    }
+
+    function getTipoColor(tipo) {
+      const colors = {
+        'DIAGNOSTICAR E REPARAR': 'bg-orange-100 text-orange-800',
+        'ANALISAR E OTIMIZAR': 'bg-yellow-100 text-yellow-800',
+        'TROCA DE EQUIPAMENTOS': 'bg-purple-100 text-purple-800',
+        'MUDANÇA INTERNA': 'bg-pink-100 text-pink-800',
+        'INSTALAÇÃO INTERNET': 'bg-green-100 text-green-800',
+        'INSTALAÇÃO MUDANÇA INTERNET': 'bg-teal-100 text-teal-800',
+        'INSTALAÇÃO PONTO ADICIONAL': 'bg-emerald-100 text-emerald-800',
+        'DESINSTALAÇÃO': 'bg-red-100 text-red-800',
+        'RETIRADA': 'bg-red-100 text-red-800'
+      };
+      return colors[tipo] || 'bg-gray-100 text-gray-800';
+    }
+
+    function prevPage() {
+      if (currentPage > 1) {
+        currentPage--;
+        updateTable();
+      }
+    }
+
+    function nextPage() {
+      const totalPages = Math.ceil(filteredData.length / pageSize);
+      if (currentPage < totalPages) {
+        currentPage++;
+        updateTable();
+      }
+    }
+  </script>
+</body>
+</html>
